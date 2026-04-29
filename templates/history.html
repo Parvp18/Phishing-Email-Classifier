@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishGuard - Scan History</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='icons/shield.svg') }}" alt="Shield" width="24" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%236c63ff\'><path d=\'M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-3zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-2.33v8.02z\'/></svg>'">
+            PhishGuard
+        </div>
+        <ul class="nav-links">
+            <li><a href="/">Analyzer</a></li>
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/history" class="active">History</a></li>
+        </ul>
+        <div style="margin-top: auto;">
+            <div class="model-status">
+                <div class="status-dot"></div>
+                Model v{{ version }} active
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <h1>Scan History</h1>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Search and review past email analysis results.</p>
+
+        <div class="card">
+            <!-- Toolbar -->
+            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                <input type="text" id="history_search" class="input-field" placeholder="Search by subject, sender, or hash..." style="flex: 1;">
+                <select id="label_filter" class="input-field" style="width: 150px;">
+                    <option value="">All Verdicts</option>
+                    <option value="PHISHING">Phishing</option>
+                    <option value="SAFE">Safe</option>
+                </select>
+                <button class="btn-primary" onclick="loadHistory(1)">Search</button>
+            </div>
+
+            <!-- Table -->
+            <div style="overflow-x: auto;">
+                <table class="urls-table" style="min-width: 800px;">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Email Details</th>
+                            <th>Verdict</th>
+                            <th>Confidence</th>
+                            <th>Attack Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history_tbody">
+                        <!-- Loaded via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination_controls" style="margin-top: 1.5rem; display: flex; justify-content: center; align-items: center;">
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/history.js') }}"></script>
+</body>
+</html>

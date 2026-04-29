@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishGuard - Advanced Phishing Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='icons/shield.svg') }}" alt="Shield" width="24" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%236c63ff\'><path d=\'M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-3zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-2.33v8.02z\'/></svg>'">
+            PhishGuard
+        </div>
+        <ul class="nav-links">
+            <li><a href="/" class="active">Analyzer</a></li>
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/history">History</a></li>
+        </ul>
+        <div style="margin-top: auto;">
+            <div class="model-status">
+                <div class="status-dot"></div>
+                Model v{{ version }} active
+            </div>
+            <button class="btn-demo" onclick="document.getElementById('email_text').value='Verify your paypal account immediately http://paypa1.com';">Try Demo</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <h1>Email Analyzer</h1>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Run a multi-layer ML analysis on any suspicious email.</p>
+
+        <!-- Input Section -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="tabs">
+                <button class="tab-btn active" data-target="tab_paste">Paste Email</button>
+                <button class="tab-btn" data-target="tab_upload">Upload .eml</button>
+                <button class="tab-btn" data-target="tab_bulk">Bulk CSV</button>
+            </div>
+
+            <!-- Tab 1: Paste -->
+            <div id="tab_paste" class="tab-content">
+                <div class="input-row">
+                    <input type="text" id="email_subject" class="input-field" placeholder="Subject (Optional)">
+                    <input type="text" id="email_sender" class="input-field" placeholder="Sender Email (Optional)">
+                </div>
+                <div style="position: relative;">
+                    <textarea id="email_text" class="input-field" placeholder="Paste full email text/HTML here... (Ctrl+Enter to analyze)"></textarea>
+                    <div style="position: absolute; bottom: 10px; right: 15px; color: var(--text-muted); font-size: 0.75rem;">
+                        <span id="char_count">0</span> chars
+                    </div>
+                </div>
+                <div style="margin-top: 1rem; text-align: right;">
+                    <button class="btn-primary" onclick="analyzePaste()">Analyze Email</button>
+                </div>
+            </div>
+
+            <!-- Tab 2: Upload -->
+            <div id="tab_upload" class="tab-content hidden">
+                <div class="file-drop" id="file_drop">
+                    <input type="file" id="eml_file" accept=".eml" class="hidden">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
+                    <div id="file_name_label">Drag and drop .eml file here or click to browse</div>
+                </div>
+                <div style="margin-top: 1rem; text-align: right;">
+                    <button class="btn-primary" onclick="analyzeFile()">Analyze File</button>
+                </div>
+            </div>
+
+            <!-- Tab 3: Bulk -->
+            <div id="tab_bulk" class="tab-content hidden">
+                <div class="file-drop" id="bulk_drop">
+                    <input type="file" id="csv_file" accept=".csv" class="hidden">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+                    <div id="csv_name_label">Drag and drop .csv file here or click to browse</div>
+                </div>
+                <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.5rem;">CSV must have columns: id, text, subject(optional), sender(optional)</p>
+                <div style="margin-top: 1rem; text-align: right;">
+                    <button class="btn-primary" onclick="analyzeBulk()">Analyze Bulk CSV</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading_overlay" class="loading-overlay hidden">
+            <div class="spinner"></div>
+            <h2 style="margin-bottom: 1rem;">Analyzing Threat Profile...</h2>
+            <div style="color: var(--text-muted);">Running ML ensemble & threat intel checks</div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results_section" class="results-container hidden">
+            <!-- Verdict -->
+            <div id="verdict_banner" class="verdict-banner safe">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span id="verdict_icon" style="font-size: 1.5rem;">✅</span>
+                    <span id="verdict_text">Email Appears Safe</span>
+                </div>
+                <span id="verdict_conf" class="pill" style="background: rgba(255,255,255,0.2); color: inherit;">94% Confidence</span>
+            </div>
+
+            <!-- Model Row -->
+            <div class="models-row">
+                <div class="card model-card">
+                    <div class="model-name">Naive Bayes</div>
+                    <div id="nb_label" class="pill" style="display:inline-block; margin-bottom:0.5rem;">-</div>
+                    <div id="nb_conf" class="model-conf">-</div>
+                </div>
+                <div class="card model-card">
+                    <div class="model-name">Random Forest</div>
+                    <div id="rf_label" class="pill" style="display:inline-block; margin-bottom:0.5rem;">-</div>
+                    <div id="rf_conf" class="model-conf">-</div>
+                </div>
+                <div class="card model-card">
+                    <div class="model-name">XGBoost</div>
+                    <div id="xgb_label" class="pill" style="display:inline-block; margin-bottom:0.5rem;">-</div>
+                    <div id="xgb_conf" class="model-conf">-</div>
+                </div>
+                <div class="card model-card ensemble">
+                    <div class="model-name" style="color: var(--accent); font-weight: bold;">Ensemble Model</div>
+                    <div id="ens_label" class="pill" style="display:inline-block; margin-bottom:0.5rem;">-</div>
+                    <div id="ens_conf" class="model-conf">-</div>
+                </div>
+            </div>
+
+            <div class="analysis-grid">
+                <!-- SHAP Heatmap -->
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">Explainability Heatmap</h3>
+                    <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1rem;">Red highlights indicate words that contributed to a Phishing verdict.</p>
+                    <div id="heatmap_box" class="heatmap-box"></div>
+                </div>
+
+                <!-- Radar & Attack Type -->
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">Threat Profile Radar</h3>
+                    <div style="height: 250px; position: relative;">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                    <div style="margin-top: 1.5rem; text-align: center;">
+                        <div style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 0.5rem;">Detected Attack Type</div>
+                        <div id="attack_type_badge" class="pill blue" style="font-size: 1rem; padding: 0.5rem 1rem;">Credential Harvesting</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Breakdown -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;">Top Driving Features (SHAP)</h3>
+                <div id="feature_grid" class="feature-list">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- URLs Table -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;">URL Threat Intel</h3>
+                <div style="overflow-x: auto;">
+                    <table class="urls-table">
+                        <thead>
+                            <tr>
+                                <th>URL</th>
+                                <th>VirusTotal</th>
+                                <th>Domain Age</th>
+                                <th>Lookalike</th>
+                            </tr>
+                        </thead>
+                        <tbody id="urls_tbody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recommendation & Export -->
+            <div class="card" style="display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--accent);">
+                <div>
+                    <h3 style="margin-bottom: 0.5rem;">Recommendation</h3>
+                    <p id="recommendation_text" style="color: var(--text-muted);"></p>
+                </div>
+                <div>
+                    <button id="download_report_btn" class="btn-demo">Download PDF Report</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

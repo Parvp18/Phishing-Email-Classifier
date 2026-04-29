@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  phishguard:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+      - ./models_saved:/app/models_saved
+      - ./reports:/app/reports
+      - phishguard_db:/app/instance
+    env_file:
+      - .env.example
+    restart: unless-stopped
+
+volumes:
+  phishguard_db:
