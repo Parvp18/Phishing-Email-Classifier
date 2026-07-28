@@ -156,7 +156,15 @@ async function analyzePaste() {
             body: JSON.stringify({ email_text: text, subject, sender })
         });
 
-        const data = await res.json();
+        const rawText = await res.text();
+        let data;
+        try {
+            data = JSON.parse(rawText);
+        } catch (err) {
+            hideLoading();
+            showError(`Server response (${res.status}): ${rawText || res.statusText}`);
+            return;
+        }
         hideLoading();
 
         if (res.ok) {
@@ -188,7 +196,15 @@ async function analyzeFile() {
             body: formData
         });
 
-        const data = await res.json();
+        const rawText = await res.text();
+        let data;
+        try {
+            data = JSON.parse(rawText);
+        } catch (err) {
+            hideLoading();
+            showError(`Server response (${res.status}): ${rawText || res.statusText}`);
+            return;
+        }
         hideLoading();
 
         if (res.ok) {
@@ -332,7 +348,15 @@ async function analyzeBulk() {
             body: formData
         });
 
-        const data = await res.json();
+        const rawText = await res.text();
+        let data;
+        try {
+            data = JSON.parse(rawText);
+        } catch (err) {
+            hideLoading();
+            showError(`Server response (${res.status}): ${rawText || res.statusText}`);
+            return;
+        }
         hideLoading();
 
         if (res.ok) {
