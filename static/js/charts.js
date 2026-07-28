@@ -45,9 +45,9 @@ function renderRadarChart(features) {
             maintainAspectRatio: false,
             scales: {
                 r: {
-                    angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                    pointLabels: { color: 'rgba(255, 255, 255, 0.7)', font: { size: 12, family: 'Inter' } },
+                    angleLines: { color: 'rgba(226, 232, 240, 1)' },
+                    grid: { color: 'rgba(226, 232, 240, 1)' },
+                    pointLabels: { color: '#475569', font: { size: 12, family: 'Plus Jakarta Sans, Inter, sans-serif', weight: '600' } },
                     ticks: { display: false, min: 0, max: 100 }
                 }
             },
