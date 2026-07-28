@@ -18,7 +18,11 @@ BASE_DIR: Path = Path(__file__).resolve().parent
 # API Keys & Secrets
 # ---------------------------------------------------------------------------
 VIRUSTOTAL_API_KEY: str = os.getenv("VIRUSTOTAL_API_KEY", "")
-API_KEYS: list[str] = os.getenv("API_KEYS", "dev-key-123").split(",")
+raw_keys = os.getenv("API_KEYS", "dev-key-123,your-secret-key-1").split(",")
+API_KEYS: list[str] = [k.strip() for k in raw_keys if k.strip()]
+for default_k in ["dev-key-123", "your-secret-key-1"]:
+    if default_k not in API_KEYS:
+        API_KEYS.append(default_k)
 FLASK_SECRET_KEY: str = os.getenv("FLASK_SECRET_KEY", "phishguard-dev-secret")
 
 # ---------------------------------------------------------------------------
