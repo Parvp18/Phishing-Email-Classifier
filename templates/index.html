@@ -40,6 +40,8 @@
                 <button class="tab-btn active" data-target="tab_paste">Paste Email</button>
                 <button class="tab-btn" data-target="tab_upload">Upload .eml</button>
                 <button class="tab-btn" data-target="tab_bulk">Bulk CSV</button>
+                <button class="tab-btn" data-target="tab_copilot">🤖 Cyber Copilot</button>
+                <button class="tab-btn" data-target="tab_simulator">🧪 Threat Risk Lab</button>
             </div>
 
             <!-- Tab 1: Paste -->
@@ -81,6 +83,51 @@
                 <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.5rem;">CSV must have columns: id, text, subject(optional), sender(optional)</p>
                 <div style="margin-top: 1rem; text-align: right;">
                     <button class="btn-primary" onclick="analyzeBulk()">Analyze Bulk CSV</button>
+                </div>
+            </div>
+
+            <!-- Tab 4: Cyber Copilot Assistant -->
+            <div id="tab_copilot" class="tab-content hidden">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-weight: 500;">Ask Cyber Copilot about email headers, SPF/DKIM verification, or safe reply templates.</p>
+                <div id="copilot_chat" style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-input); padding: 1rem; height: 240px; overflow-y: auto; margin-bottom: 1rem;">
+                    <div class="chat-msg bot"><strong>Cyber Copilot:</strong> Hello! Ask me any question about email threat analysis, SPF/DKIM records, or security incident reporting.</div>
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    <input type="text" id="copilot_input" class="input-field" placeholder="e.g. How do I verify SPF records or draft a safe response?" onkeydown="if(event.key==='Enter') sendCopilotMessage()">
+                    <button class="btn-primary" onclick="sendCopilotMessage()">Ask Copilot</button>
+                </div>
+            </div>
+
+            <!-- Tab 5: Real-Time Risk Simulator Lab -->
+            <div id="tab_simulator" class="tab-content hidden">
+                <p style="color: var(--text-secondary); margin-bottom: 1.25rem; font-weight: 500;">Adjust parameters to test how ML models evaluate email threat features in real-time.</p>
+                
+                <div class="input-row" style="grid-template-columns: 1fr 1fr 1fr;">
+                    <div>
+                        <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 0.4rem;">Urgent Keywords (<span id="sim_urgent_val">0</span>)</label>
+                        <input type="range" id="sim_urgent_words" min="0" max="10" value="0" style="width: 100%;" oninput="runThreatSimulation()">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 0.4rem;">Exclamation Marks (<span id="sim_excl_val">0</span>)</label>
+                        <input type="range" id="sim_exclamations" min="0" max="10" value="0" style="width: 100%;" oninput="runThreatSimulation()">
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; justify-content: center;">
+                        <label><input type="checkbox" id="sim_lookalike" onchange="runThreatSimulation()"> Misspelled Lookalike Domain</label>
+                        <label><input type="checkbox" id="sim_login" onchange="runThreatSimulation()"> Login Form Keywords</label>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 2rem; margin-top: 1rem; padding: 1rem; background: var(--bg-subtle); border-radius: var(--radius-input); align-items: center;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-weight: 700;">
+                            <span>Simulated ML Risk Output</span>
+                            <span id="sim_score_val">5% Risk</span>
+                        </div>
+                        <div style="height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden;">
+                            <div id="sim_meter_fill" style="width: 5%; height: 100%; background: #16a34a; transition: all 0.3s ease;"></div>
+                        </div>
+                    </div>
+                    <div id="sim_verdict_badge" class="pill green">SAFE EMAIL</div>
                 </div>
             </div>
         </div>
@@ -182,14 +229,17 @@
                     <h3 style="margin-bottom: 0.5rem;">Recommendation</h3>
                     <p id="recommendation_text" style="color: var(--text-muted);"></p>
                 </div>
-                <div>
-                    <button id="download_report_btn" class="btn-demo">Download PDF Report</button>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button class="btn-demo" onclick="copySOCTicket()">Copy SOC Ticket</button>
+                    <button id="download_report_btn" class="btn-primary">Download PDF Report</button>
                 </div>
             </div>
         </div>
     </main>
 
     <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/copilot.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/simulator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

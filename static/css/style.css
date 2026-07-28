@@ -525,3 +525,28 @@ textarea.input-field {
   box-shadow: var(--shadow-md);
   pointer-events: none;
 }
+
+/* Chat Copilot Styling */
+.chat-msg {
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+  max-width: 90%;
+}
+
+.chat-msg.bot {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.chat-msg.user {
+  background: var(--accent-light);
+  border: 1px solid #c7d2fe;
+  color: var(--accent);
+  margin-left: auto;
+  font-weight: 500;
+}

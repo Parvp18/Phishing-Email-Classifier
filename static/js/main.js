@@ -223,6 +223,7 @@ async function analyzeFile() {
 // -----------------------------------------------------------------------------
 
 function renderResults(data) {
+    window.lastScanData = data;
     const resultsSec = document.getElementById('results_section');
     resultsSec.classList.remove('hidden');
 
@@ -445,4 +446,42 @@ window.showSingleResult = function(resData) {
     const bulkSec = document.getElementById('bulk_results_section');
     if (bulkSec) bulkSec.classList.add('hidden');
     renderResults(resData);
+};
+
+window.copySOCTicket = function() {
+    if (!window.lastScanData) {
+        alert("No completed scan data available to export.");
+        return;
+    }
+    const d = window.lastScanData;
+    const ticket = `================================================
+PHISHGUARD SOC INCIDENT REPORT
+================================================
+Verdict: ${d.label} (${d.confidence}% Confidence)
+Risk Level: ${d.risk_level}
+Attack Classification: ${d.attack_type || 'Unknown'}
+Scan Timestamp: ${new Date().toISOString()}
+
+--- MODEL CONSENSUS VOTES ---
+- Ensemble: ${d.model_votes.ensemble.label} (${d.model_votes.ensemble.confidence}%)
+- XGBoost: ${d.model_votes.xgboost.label} (${d.model_votes.xgboost.confidence}%)
+- Random Forest: ${d.model_votes.random_forest.label} (${d.model_votes.random_forest.confidence}%)
+- Naive Bayes: ${d.model_votes.naive_bayes.label} (${d.model_votes.naive_bayes.confidence}%)
+
+--- KEY RISK INDICATORS ---
+- Sender Domain Mismatch: ${d.features.sender_domain_mismatch ? 'YES (CRITICAL)' : 'NO'}
+- Misspelled Brand / Lookalike: ${d.features.misspelled_brand ? 'YES (CRITICAL)' : 'NO'}
+- SPF Auth: ${d.features.spf_pass ? 'PASS' : 'FAIL'} | DKIM Auth: ${d.features.dkim_pass ? 'PASS' : 'FAIL'}
+- Urgent Keywords Found: ${d.features.urgent_keyword_count || 0}
+- Login Form Triggers: ${d.features.has_login_form_words ? 'YES' : 'NO'}
+
+--- ACTIONABLE RECOMMENDATION ---
+${d.recommendation}
+================================================`;
+
+    navigator.clipboard.writeText(ticket).then(() => {
+        alert("📋 SOC Incident Report copied to clipboard!");
+    }).catch(err => {
+        console.error("Failed to copy ticket:", err);
+    });
 };
