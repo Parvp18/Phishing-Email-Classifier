@@ -52,6 +52,9 @@ class ScanResult(db.Model):
         cascade="all, delete-orphan"
     )
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def to_dict(self) -> dict:
         """Serialize the record to a plain dictionary."""
         import json
@@ -93,6 +96,9 @@ class Feedback(db.Model):
         db.DateTime, nullable=False,
         default=lambda: datetime.now(timezone.utc)
     )
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def to_dict(self) -> dict:
         """Serialize the record to a plain dictionary."""

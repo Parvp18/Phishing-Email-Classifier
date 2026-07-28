@@ -152,7 +152,7 @@ def analyze_email():
         sender=sender,
         subject=subject,
         email_body=text,
-        scan_source="api" if request.path == "/api/analyze" else "paste",
+        scan_source=data.get("scan_source", "api"),
         analysis_time_ms=res["analysis_time_ms"]
     )
     db.session.add(scan_result)
@@ -176,8 +176,9 @@ def upload_eml():
     if not file.filename.endswith(".eml"):
         return jsonify({"error": "Only .eml files are supported", "code": 400}), 400
 
+    import uuid
     filename = secure_filename(file.filename)
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    filepath = os.path.join(UPLOAD_FOLDER, f"{uuid.uuid4()}_{filename}")
     file.save(filepath)
     
     try:
@@ -209,30 +210,34 @@ def upload_eml():
         pred = get_predictor()
         res = pred.analyze(body, subject, sender)
         
+        if "error" in res:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            return jsonify({"error": res["error"], "code": 500}), 500
+
         # Save to DB
-        if "error" not in res:
-            scan_result = ScanResult(
-                email_hash=res["email_hash"],
-                label=res["label"],
-                confidence=res["confidence"],
-                risk_score=res["risk_score"],
-                risk_level=res["risk_level"],
-                attack_type=res["attack_type"],
-                features_json=json.dumps(res["features"]),
-                urls_json=json.dumps(res["urls_found"]),
-                shap_json=json.dumps(res["shap_top_features"]),
-                model_votes_json=json.dumps(res["model_votes"]),
-                word_heatmap_json=json.dumps(res["word_heatmap"]),
-                recommendation=res["recommendation"],
-                sender=sender,
-                subject=subject,
-                email_body=body,
-                scan_source="upload",
-                analysis_time_ms=res["analysis_time_ms"]
-            )
-            db.session.add(scan_result)
-            db.session.commit()
-            res["id"] = scan_result.id
+        scan_result = ScanResult(
+            email_hash=res["email_hash"],
+            label=res["label"],
+            confidence=res["confidence"],
+            risk_score=res["risk_score"],
+            risk_level=res["risk_level"],
+            attack_type=res["attack_type"],
+            features_json=json.dumps(res["features"]),
+            urls_json=json.dumps(res["urls_found"]),
+            shap_json=json.dumps(res["shap_top_features"]),
+            model_votes_json=json.dumps(res["model_votes"]),
+            word_heatmap_json=json.dumps(res["word_heatmap"]),
+            recommendation=res["recommendation"],
+            sender=sender,
+            subject=subject,
+            email_body=body,
+            scan_source="upload",
+            analysis_time_ms=res["analysis_time_ms"]
+        )
+        db.session.add(scan_result)
+        db.session.commit()
+        res["id"] = scan_result.id
 
     except Exception as e:
         logger.error(f"Error parsing .eml: {e}")
@@ -348,7 +353,8 @@ def get_stats():
     attack_types = {k: v for k, v in attack_types_query if k}
     
     # Daily counts (last 30 days)
-    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    # Ensure thirty_days_ago is timezone-naive for SQLite matching
+    thirty_days_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
     
     # SQLite friendly date grouping
     if "sqlite" in app.config['SQLALCHEMY_DATABASE_URI']:
