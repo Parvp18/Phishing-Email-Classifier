@@ -25,5 +25,5 @@ EXPOSE 5000
 # Ensure directories exist
 RUN mkdir -p /app/instance /app/models_saved /app/uploads /app/reports /app/data
 
-# Run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "app:app"]
+# Run gunicorn with dynamic PORT binding and memory optimization for free tiers
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 1 --threads 4 --timeout 120 app:app"]
