@@ -24,6 +24,16 @@ document.addEventListener('DOMContentLoaded', () => {
             loadHistory(1);
         });
     }
+
+    // Auto-reload history when tab gets focus or visibility changes
+    window.addEventListener('focus', () => {
+        loadHistory(currentPage);
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            loadHistory(currentPage);
+        }
+    });
 });
 
 async function loadHistory(page = 1) {

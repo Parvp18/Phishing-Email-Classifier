@@ -278,8 +278,30 @@ def bulk_scan():
             res = pred.analyze(text, subj, sender)
             res["original_id"] = str(row.get("id", idx))
             
-            # Note: We won't save bulk to DB to avoid blowing it up, 
-            # or we could save them marked as "bulk". We'll skip DB for bulk to be safe.
+            # Save bulk scan result to DB so history persists
+            scan_result = ScanResult(
+                email_hash=res["email_hash"],
+                label=res["label"],
+                confidence=res["confidence"],
+                risk_score=res["risk_score"],
+                risk_level=res["risk_level"],
+                attack_type=res["attack_type"],
+                features_json=json.dumps(res["features"]),
+                urls_json=json.dumps(res["urls_found"]),
+                shap_json=json.dumps(res["shap_top_features"]),
+                model_votes_json=json.dumps(res["model_votes"]),
+                word_heatmap_json=json.dumps(res["word_heatmap"]),
+                recommendation=res["recommendation"],
+                sender=sender,
+                subject=subj,
+                email_body=text,
+                scan_source="bulk",
+                analysis_time_ms=res["analysis_time_ms"]
+            )
+            db.session.add(scan_result)
+            db.session.commit()
+            res["id"] = scan_result.id
+            
             results.append(res)
             
         # Summary stats
