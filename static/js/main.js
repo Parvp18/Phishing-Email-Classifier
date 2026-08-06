@@ -39,6 +39,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Auto-clear checkbox state persistence
+    const autoClearCheckbox = document.getElementById('auto_clear_checkbox');
+    if (autoClearCheckbox) {
+        const savedSetting = localStorage.getItem('phishguard_auto_clear');
+        if (savedSetting !== null) {
+            autoClearCheckbox.checked = savedSetting === 'true';
+        }
+        autoClearCheckbox.addEventListener('change', () => {
+            localStorage.setItem('phishguard_auto_clear', autoClearCheckbox.checked);
+        });
+    }
+
     // Drag and drop for file upload
     const fileDrop = document.getElementById('file_drop');
     const fileInput = document.getElementById('eml_file');
@@ -130,6 +142,20 @@ function showError(msg) {
     alert("Error: " + msg);
 }
 
+window.clearEmailText = function() {
+    const emailInput = document.getElementById('email_text');
+    const emailSubject = document.getElementById('email_subject');
+    const emailSender = document.getElementById('email_sender');
+    const charCount = document.getElementById('char_count');
+
+    if (emailInput) emailInput.value = '';
+    if (emailSubject) emailSubject.value = '';
+    if (emailSender) emailSender.value = '';
+    if (charCount) charCount.textContent = '0';
+
+    if (emailInput) emailInput.focus();
+};
+
 // -----------------------------------------------------------------------------
 // API Calls
 // -----------------------------------------------------------------------------
@@ -169,6 +195,10 @@ async function analyzePaste() {
 
         if (res.ok) {
             renderResults(data);
+            const autoClearCheckbox = document.getElementById('auto_clear_checkbox');
+            if (autoClearCheckbox && autoClearCheckbox.checked) {
+                clearEmailText();
+            }
         } else {
             showError(data.error || "Unknown error occurred.");
         }
@@ -303,16 +333,26 @@ function renderResults(data) {
     // URLs Table
     const tbody = document.getElementById('urls_tbody');
     tbody.innerHTML = '';
-    if (data.urls_found.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4">No URLs found in email.</td></tr>';
+    if (!data.urls_found || data.urls_found.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding: 1.5rem;">No websites or URLs found in email content.</td></tr>';
     } else {
         data.urls_found.forEach(u => {
+            const status = u.status || (u.is_safe ? 'SAFE' : 'SUSPICIOUS');
+            let pillClass = 'green';
+            let icon = '✅';
+            if (status === 'MALICIOUS') { pillClass = 'red'; icon = '⛔'; }
+            else if (status === 'SUSPICIOUS') { pillClass = 'yellow'; icon = '⚠️'; }
+            
             tbody.innerHTML += `
                 <tr>
-                    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">${u.url}</td>
+                    <td style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${u.url}">
+                        <a href="${u.url}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); text-decoration:none; font-weight:600;">${u.url}</a>
+                    </td>
+                    <td><span class="pill ${pillClass}">${icon} ${status}</span></td>
                     <td>${u.virustotal_score}</td>
-                    <td>${u.domain_age_days}</td>
-                    <td>${u.is_lookalike ? '<span class="pill red">Yes</span>' : 'No'}</td>
+                    <td>${u.domain_age_days >= 0 ? u.domain_age_days + ' days' : 'Unknown'}</td>
+                    <td>${u.is_lookalike ? '<span class="pill red">Spoofed (' + u.lookalike_of + ')</span>' : '<span class="pill green">Clean</span>'}</td>
+                    <td style="font-size:0.85rem; color:var(--text-secondary);">${u.safety_reason || 'Verified'}</td>
                 </tr>
             `;
         });
@@ -485,3 +525,49 @@ ${d.recommendation}
         console.error("Failed to copy ticket:", err);
     });
 };
+
+window.reportToCybercrimePortal = function() {
+    if (!window.lastScanData) {
+        alert("No completed email scan available to report.");
+        return;
+    }
+    const d = window.lastScanData;
+    const urlList = d.urls_found && d.urls_found.length ? d.urls_found.map(u => u.url).join(', ') : 'None detected';
+    const subject = document.getElementById('email_subject')?.value || 'N/A';
+    const sender = document.getElementById('email_sender')?.value || 'Unknown';
+    
+    const cyberReportPayload = `================================================
+NATIONAL CYBERCRIME REPORTING PORTAL INCIDENT DRAFT
+National Helpline: 1930 | Official Portal: https://cybercrime.gov.in
+================================================
+Scan ID: ${d.id}
+Timestamp: ${new Date().toLocaleString()}
+Threat Classification: ${d.label} (${d.confidence}% Confidence)
+Attack Type: ${d.attack_type || 'Phishing / Financial Fraud'}
+Risk Level: ${d.risk_level}
+
+--- SUSPECT EMAIL METADATA ---
+Subject Line: ${subject}
+Sender Email Address: ${sender}
+Extracted Malicious URLs: ${urlList}
+
+--- KEY THREAT INDICATORS ---
+- Sender Domain Mismatch: ${d.features.sender_domain_mismatch ? 'YES (CRITICAL)' : 'NO'}
+- Misspelled Lookalike Domain: ${d.features.misspelled_brand ? 'YES (CRITICAL)' : 'NO'}
+- SPF Authentication: ${d.features.spf_pass ? 'PASS' : 'FAIL'}
+- DKIM Authentication: ${d.features.dkim_pass ? 'PASS' : 'FAIL'}
+- Urgent Triggers Count: ${d.features.urgent_keyword_count || 0}
+
+--- INCIDENT SUMMARY ---
+Suspicious email received attempting unauthorized credential harvesting/social engineering. PhishGuard ML Ensemble classified as ${d.label} threat.
+================================================`;
+
+    navigator.clipboard.writeText(cyberReportPayload).then(() => {
+        alert("🚨 National Cybercrime Incident Draft copied to your clipboard!\n\nClick OK to open the National Cybercrime Reporting Portal (cybercrime.gov.in) to submit your report.");
+        window.open('https://cybercrime.gov.in/', '_blank');
+    }).catch(err => {
+        console.error("Clipboard copy error:", err);
+        window.open('https://cybercrime.gov.in/', '_blank');
+    });
+};
+

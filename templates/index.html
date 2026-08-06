@@ -56,7 +56,13 @@
                         <span id="char_count">0</span> chars
                     </div>
                 </div>
-                <div style="margin-top: 1rem; text-align: right;">
+                <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <button class="btn-demo" onclick="clearEmailText()" title="Clear email subject, sender, and text">🗑️ Clear Text</button>
+                        <label style="font-size: 0.85rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-weight: 500;">
+                            <input type="checkbox" id="auto_clear_checkbox" style="cursor: pointer;"> Auto-clear text after analysis
+                        </label>
+                    </div>
                     <button class="btn-primary" onclick="analyzePaste()">Analyze Email</button>
                 </div>
             </div>
@@ -224,14 +230,15 @@
             </div>
 
             <!-- Recommendation & Export -->
-            <div class="card" style="display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--accent);">
-                <div>
+            <div class="card" style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; border-left: 4px solid var(--accent); flex-wrap: wrap;">
+                <div style="min-width: 240px; flex: 1;">
                     <h3 style="margin-bottom: 0.5rem;">Recommendation</h3>
                     <p id="recommendation_text" style="color: var(--text-muted);"></p>
                 </div>
-                <div style="display: flex; gap: 0.75rem;">
-                    <button class="btn-demo" onclick="copySOCTicket()">Copy SOC Ticket</button>
-                    <button id="download_report_btn" class="btn-primary">Download PDF Report</button>
+                <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: nowrap; flex-shrink: 0;">
+                    <button class="btn-demo" onclick="copySOCTicket()" style="width: auto; white-space: nowrap; margin: 0; padding: 0.85rem 1.25rem;">Copy SOC Ticket</button>
+                    <button id="download_report_btn" class="btn-primary" style="width: auto; white-space: nowrap; padding: 0.85rem 1.25rem;">Download PDF Report</button>
+                    <button class="btn-primary" onclick="reportToCybercrimePortal()" style="width: auto; background: linear-gradient(135deg, #dc2626, #991b1b); white-space: nowrap; padding: 0.85rem 1.25rem;" title="Report phishing incident to National Cybercrime Reporting Portal (cybercrime.gov.in)">🚨 Report Cybercrime</button>
                 </div>
             </div>
         </div>

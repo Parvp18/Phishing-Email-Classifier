@@ -103,30 +103,81 @@ class PhishingPredictor:
         else:
             risk_level = "LOW"
             
-        # 6. Extract URLs and perform Threat Intel + Lookalike
-        urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', email_text)
+        # 6. Extract URLs and perform Threat Intel + Lookalike + Safety Classification
+        raw_urls = re.findall(r'https?://[^\s<>"\']+', email_text, re.IGNORECASE)
+        href_urls = re.findall(r'href=["\'](https?://[^\s"\']+)["\']', email_text, re.IGNORECASE)
+        www_domains = re.findall(r'\b(?:www\.)[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:/[^\s<>"\']*)?', email_text, re.IGNORECASE)
+        
+        combined_raw = set(raw_urls + href_urls + ["http://" + w for w in www_domains])
+        cleaned_urls = []
+        for u in combined_raw:
+            cleaned = u.rstrip('.,;)"\'>')
+            if cleaned and cleaned not in cleaned_urls:
+                cleaned_urls.append(cleaned)
+                
         urls_found = []
-        for u in set(urls):
-            domain = urlparse(u).netloc.split(':')[0]
+        for u in cleaned_urls:
+            parsed_netloc = urlparse(u).netloc.split(':')[0]
+            domain = parsed_netloc if parsed_netloc else urlparse("http://" + u).netloc.split(':')[0]
+            
             vt_info = self.threat_intel.check_virustotal(u)
             la_info = self.lookalike.check(domain)
             age = self.threat_intel.check_domain_age(domain)
             
-            vt_score_str = f"{vt_info['malicious_count']}/{vt_info['total_engines']} engines flagged" if vt_info else "Not Scanned"
+            if not self.threat_intel.vt_api_key:
+                vt_score_str = "Local Scan (No VT Key)"
+            elif vt_info:
+                vt_score_str = f"{vt_info['malicious_count']}/{vt_info['total_engines']} engines flagged"
+            else:
+                vt_score_str = "Rate Limited / Timeout"
+            
+            # Determine explicit Safety Verdict for this website
+            is_lookalike = la_info.get("is_lookalike", False)
+            lookalike_of = la_info.get("lookalike_of", "")
+            vt_flagged = bool(vt_info and vt_info.get('malicious_count', 0) > 0)
+            is_ip_domain = bool(re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', domain))
+            
+            if vt_flagged:
+                status = "MALICIOUS"
+                is_safe = False
+                reason = f"Flagged as malicious by {vt_info['malicious_count']} security engines"
+            elif is_lookalike:
+                status = "MALICIOUS"
+                is_safe = False
+                reason = f"Deceptive typosquatting domain mimicking legitimate brand ({lookalike_of})"
+            elif is_ip_domain:
+                status = "SUSPICIOUS"
+                is_safe = False
+                reason = "Uses raw IP address instead of domain name"
+            elif 0 <= age < 30:
+                status = "SUSPICIOUS"
+                is_safe = False
+                reason = f"Newly registered domain ({age} days old)"
+            else:
+                status = "SAFE"
+                is_safe = True
+                reason = f"No threats detected. Domain age: {age} days." if age > 0 else "Clean reputation. No threat indicators found."
             
             urls_found.append({
                 "url": u,
+                "domain": domain,
+                "status": status,
+                "is_safe": is_safe,
+                "safety_reason": reason,
                 "virustotal_score": vt_score_str,
-                "is_lookalike": la_info.get("is_lookalike", False),
-                "lookalike_of": la_info.get("lookalike_of", ""),
+                "is_lookalike": is_lookalike,
+                "lookalike_of": lookalike_of,
                 "domain_age_days": age
             })
             
-            # Boost risk if VT flags it
-            if vt_info and vt_info['malicious_count'] > 0:
-                is_phishing = True
-                label = "PHISHING"
-                risk_level = "CRITICAL"
+            # Boost global email risk if website is malicious/suspicious
+            if status in ["MALICIOUS", "SUSPICIOUS"]:
+                if status == "MALICIOUS":
+                    is_phishing = True
+                    label = "PHISHING"
+                    risk_level = "CRITICAL"
+                elif risk_level == "LOW":
+                    risk_level = "MEDIUM"
                 
         # 7. Extract Sender IP, SPF/DKIM, Geolocation
         sender_ip = self.threat_intel.extract_sender_ip(email_text)
